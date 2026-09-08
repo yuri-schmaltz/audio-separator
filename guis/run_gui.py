@@ -122,16 +122,21 @@ def pip_install_file(venv_py: str, req_file: Path, index_url: str | None = None)
 
     failed = []
     with open(req_file) as f:
-        for line in f:
-            line = line.strip()
-            # pular comentários e linhas vazias
-            if not line or line.startswith("#"):
+        for raw in f:
+            line = raw.strip()
+            # pular linhas vazias
+            if not line:
                 continue
-            # pular flags especiais que não são pacotes
+            # pular comentários full-line
+            if line.startswith("#"):
+                continue
+            # pular flags especiais (-r, -e, --index-url, etc)
             if line.startswith("-"):
                 continue
-            # strip env markers
-            pkg = line.split(";")[0].strip()
+            # IMPORTANTE: strip comentários inline (# ...) e env markers (; ...)
+            # 'audioread>=3.0.1  # comentario' → 'audioread>=3.0.1'
+            # 'numpy>=1.26 ; python_version<"3.12"' → 'numpy>=1.26'
+            pkg = line.split("#", 1)[0].split(";", 1)[0].strip()
             if not pkg:
                 continue
             try:
@@ -154,7 +159,8 @@ def pip_install_file(venv_py: str, req_file: Path, index_url: str | None = None)
         log(f"[RESUMO] {len(failed)} pacote(s) nao instalado(s):")
         for f in failed:
             log(f"   - {f}")
-        log("         A GUI pode nao funcionar completamente.")
+        log("         A GUI pode nao funcionar completamente. Tente instalar manualmente:")
+        log("         pip install <pacote>")
 
 
 def main() -> int:

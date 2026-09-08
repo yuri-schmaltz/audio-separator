@@ -9,16 +9,13 @@
 # --- Áudio core (UVR5 importa diretamente) ---
 soundfile>=0.12
 librosa>=0.10
-audioread>=3.0.1          # >=3.0.1 migra de 'imp' (sumiu em 3.12) pra 'importlib'
-numpy>=1.26,<3.0          # librosa 0.10+ quer numpy>=1.23; audio-separator quer numpy>=2
-scipy>=1.11               # audio-separator quer >=1.13,<2.0
+audioread>=3.0.1
+numpy>=1.26,<3.0
+scipy>=1.11
 
 # --- Torch / ML (instalado pelo launcher, mas re-listado pra clareza) ---
 # torch: pelo launcher
 # onnxruntime: pelo launcher
-# onnx2pytorch: precisa onnx2torch (fork mantido pro 3.12)
-onnx2torch>=1.6.1
-onnx>=1.14
 
 # --- Numerics ---
 julius>=0.2.7
@@ -44,20 +41,21 @@ six>=1.16
 cryptography>=41.0
 
 # --- matchering (mastering, usado em UVR5) ---
-# Versão 2.0.6 do UVR5 quebra com numpy 2.x
-# Mas >= 2.0.7 deve funcionar — se quebrar, comente a linha abaixo
-matchering>=2.0.7
+# Última versão do PyPI: 2.0.6. Funciona com numpy 1.x e 2.x.
+matchering>=2.0.6
+
+# --- onnx2pytorch (NÃO onnx2torch — esse só vai até 1.5.15 e tem outro propósito) ---
+onnx2pytorch>=0.4.1
+onnx>=1.14
 
 # --- playsound (chime de fim de separação) ---
 # playsound 1.3.0 (de 2017) usa inspect.getsource() que mudou em Python 3.11+
-# Solução: usar playsound3 (fork mantido, API idêntica)
-# O UVR5 faz `from playsound import playsound` — não compatível com playsound3
-# Workaround: criar shim que reexporta playsound3.playsound
-# Por ora, tentar playsound 1.2.2 (última sem o bug) e cair pro fork se falhar
+# Pin para 1.2.x (última sem o bug). Se UVR5 não achar playsound na inicialização,
+# o chime de fim de tarefa não toca, mas o resto da GUI funciona normal.
 playsound>=1.2.2,<1.3.0
 
 # --- soundstretch, samplerate, pyrubberband ---
-# Removidos do requirements — quebram em Python 3.12 (cmake/libsamplerate0-dev)
-# O UVR5 raramente usa essas; se precisar, instale via apt:
+# Removidos — quebram em Python 3.12 (cmake/libsamplerate0-dev do sistema).
+# Se precisar, instale via apt + pip manualmente:
 #   sudo apt install -y libsamplerate0-dev cmake
 #   pip install samplerate soundstretch pyrubberband
