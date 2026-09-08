@@ -1,26 +1,28 @@
 # Dependências da GUI UVR5, ajustadas para Python 3.10-3.12
 # Substitui o requirements.txt original do UVR5 (que tem pins de 2022 incompatíveis com 3.12)
 #
-# O audio-separator (CLI) já instala torch/onnxruntime/etc. separadamente,
-# então este arquivo foca só no que a GUI UVR5 precisa de adicional.
+# torch e onnxruntime são instalados separadamente pelo launcher (CUDA ou CPU)
+# audio-separator (CLI) também vem do install separado
+#
+# Foco: só o que o UVR5 REALMENTE importa (verificado via grep nos imports de UVR.py, separate.py, lib_v5/).
 
-# --- Áudio ---
-soundfile>=0.12        # leitura/escrita WAV/FLAC
-librosa>=0.10          # análise espectral (versão 0.9 do UVR5 quebra com numpy 2)
-audioread>=3.0.1       # fallback para formatos não suportados pelo soundfile
-                        # (>=3.0.1 corrige ModuleNotFoundError: 'imp' em Python 3.12)
+# --- Áudio core (UVR5 importa diretamente) ---
+soundfile>=0.12
+librosa>=0.10
+audioread>=3.0.1          # >=3.0.1 migra de 'imp' (sumiu em 3.12) pra 'importlib'
+numpy>=1.26,<3.0          # librosa 0.10+ quer numpy>=1.23; audio-separator quer numpy>=2
+scipy>=1.11               # audio-separator quer >=1.13,<2.0
 
-# --- Torch / ML (já vem do audio-separator, mas re-declaramos pra venv isolado) ---
-# torch: instalado pelo launcher com CUDA ou CPU
-# onnxruntime: instalado pelo launcher (cpu ou gpu)
+# --- Torch / ML (instalado pelo launcher, mas re-listado pra clareza) ---
+# torch: pelo launcher
+# onnxruntime: pelo launcher
+# onnx2pytorch: precisa onnx2torch (fork mantido pro 3.12)
+onnx2torch>=1.6.1
+onnx>=1.14
 
 # --- Numerics ---
-numpy>=1.26,<3.0       # audio-separator pede >=2; alguns bindings ainda pedem <3
-scipy>=1.11            # audio-separator pede >=1.13,<2.0
+julius>=0.2.7
 resampy>=0.4.2
-pyrubberband>=0.4       # pitch shifting
-soundstretch>=1.2
-samplerate>=0.1.0
 
 # --- Tkinter GUI ---
 Pillow>=10.0
@@ -31,10 +33,31 @@ pydub>=0.25
 omegaconf>=2.3
 ml_collections>=0.1.1
 einops>=0.7
-matchering>=2.0
+diffq>=0.2
 kthread>=0.2
 pyperclip>=1.8
-screeninfo>=0.8
-diffq>=0.2
-playsound>=1.3
+TkinterDnD2>=0.4
 wget>=3.2
+six>=1.16
+
+# --- Cryptography (UVR5 usa pra config encryption) ---
+cryptography>=41.0
+
+# --- matchering (mastering, usado em UVR5) ---
+# Versão 2.0.6 do UVR5 quebra com numpy 2.x
+# Mas >= 2.0.7 deve funcionar — se quebrar, comente a linha abaixo
+matchering>=2.0.7
+
+# --- playsound (chime de fim de separação) ---
+# playsound 1.3.0 (de 2017) usa inspect.getsource() que mudou em Python 3.11+
+# Solução: usar playsound3 (fork mantido, API idêntica)
+# O UVR5 faz `from playsound import playsound` — não compatível com playsound3
+# Workaround: criar shim que reexporta playsound3.playsound
+# Por ora, tentar playsound 1.2.2 (última sem o bug) e cair pro fork se falhar
+playsound>=1.2.2,<1.3.0
+
+# --- soundstretch, samplerate, pyrubberband ---
+# Removidos do requirements — quebram em Python 3.12 (cmake/libsamplerate0-dev)
+# O UVR5 raramente usa essas; se precisar, instale via apt:
+#   sudo apt install -y libsamplerate0-dev cmake
+#   pip install samplerate soundstretch pyrubberband

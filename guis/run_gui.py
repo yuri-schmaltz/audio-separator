@@ -76,14 +76,85 @@ def ensure_venv(python: str) -> str:
 
 
 def pip_install(venv_py: str, packages: list[str], index_url: str | None = None) -> None:
-    cmd = [venv_py, "-m", "pip", "install", "--quiet", "--upgrade", "pip"]
-    subprocess.run(cmd, check=True)
+    """Instala pacotes. Se receber lista com 1 item, raise se falhar. Se múltiplos, pula o que falhar."""
+    # upgrade pip primeiro (sempre)
+    subprocess.run(
+        [venv_py, "-m", "pip", "install", "--quiet", "--upgrade", "pip", "wheel", "setuptools"],
+        check=True,
+    )
 
     if index_url:
-        cmd = [venv_py, "-m", "pip", "install", "--quiet", *packages, "--index-url", index_url]
+        cmd_template = lambda pkg: [venv_py, "-m", "pip", "install", "--quiet", pkg, "--index-url", index_url]
     else:
+        cmd_template = lambda pkg: [venv_py, "-m", "pip", "install", "--quiet", pkg]
+
+    # Se for requirements file (-r path), instala tudo de uma vez e aborta se falhar
+    if len(packages) == 1 and packages[0].startswith("-r"):
         cmd = [venv_py, "-m", "pip", "install", "--quiet", *packages]
-    subprocess.run(cmd, check=True)
+        subprocess.run(cmd, check=True)
+        return
+
+    # Lista de pacotes soltos: instala um a um, pula falhas
+    failed = []
+    for pkg in packages:
+        try:
+            subprocess.run(cmd_template(pkg), check=True, capture_output=False)
+        except subprocess.CalledProcessError:
+            log(f"[AVISO] Falhou: {pkg} (continuando...)")
+            failed.append(pkg)
+
+    if failed:
+        log(f"[AVISO] {len(failed)} pacote(s) nao instalado(s): {', '.join(failed)}")
+        log("        A GUI pode nao funcionar completamente. Veja TROUBLESHOOTING_GUI.md")
+
+
+def pip_install_file(venv_py: str, req_file: Path, index_url: str | None = None) -> None:
+    """Instala um arquivo requirements.txt pacote por pacote, pulando falhas."""
+    if not req_file.exists():
+        log(f"[AVISO] requirements nao encontrado: {req_file}")
+        return
+
+    # upgrade pip + wheel + setuptools primeiro
+    subprocess.run(
+        [venv_py, "-m", "pip", "install", "--quiet", "--upgrade", "pip", "wheel", "setuptools"],
+        check=True,
+    )
+
+    failed = []
+    with open(req_file) as f:
+        for line in f:
+            line = line.strip()
+            # pular comentários e linhas vazias
+            if not line or line.startswith("#"):
+                continue
+            # pular flags especiais que não são pacotes
+            if line.startswith("-"):
+                continue
+            # strip env markers
+            pkg = line.split(";")[0].strip()
+            if not pkg:
+                continue
+            try:
+                if index_url:
+                    subprocess.run(
+                        [venv_py, "-m", "pip", "install", "--quiet", pkg, "--index-url", index_url],
+                        check=True,
+                    )
+                else:
+                    subprocess.run(
+                        [venv_py, "-m", "pip", "install", "--quiet", pkg],
+                        check=True,
+                    )
+            except subprocess.CalledProcessError:
+                log(f"[AVISO] Falhou: {pkg} (pulando)")
+                failed.append(pkg)
+
+    if failed:
+        log("")
+        log(f"[RESUMO] {len(failed)} pacote(s) nao instalado(s):")
+        for f in failed:
+            log(f"   - {f}")
+        log("         A GUI pode nao funcionar completamente.")
 
 
 def main() -> int:
@@ -132,10 +203,10 @@ def main() -> int:
             index_url="https://download.pytorch.org/whl/cpu",
         )
 
-    # Deps UVR5
+    # Deps UVR5 (instala pacote por pacote, pula falhas)
     if REQ_FILE.exists():
-        log("[INFO] Instalando deps UVR5 ...")
-        pip_install(venv_py, ["-r", str(REQ_FILE)])
+        log(f"[INFO] Instalando deps UVR5 de {REQ_FILE.name} ...")
+        pip_install_file(venv_py, REQ_FILE)
 
     # Garantir audio-separator
     log("[INFO] Garantindo audio-separator instalado ...")
