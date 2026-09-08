@@ -127,6 +127,64 @@ def check_system_tkinter() -> None:
         log("        Rode manualmente:  sudo apt install -y python3-tk python3-dev")
 
 
+def check_tkdnd_binary() -> None:
+    """Verifica se o .so do tkdnd (drag-and-drop do Tk) está presente.
+    Se faltar, baixa do upstream UVR5 no GitHub.
+    """
+    import platform as _platform
+    sysname = _platform.system().lower()
+    machine = _platform.machine().lower()
+
+    # Mapear plataforma -> subdiretorio no repo
+    if sysname == "linux":
+        plat_dir = "linux64"
+        so_name = "libtkdnd2.9.2.so"
+    elif sysname == "darwin":
+        plat_dir = "osx_arm" if "arm" in machine else "osx64"
+        so_name = "libtkdnd2.9.2.dylib"
+    elif sysname == "windows":
+        plat_dir = "win64"
+        so_name = "libtkdnd2.9.2.dll"
+    else:
+        log(f"[AVISO] SO nao suportado para tkdnd: {sysname}")
+        return
+
+    tkdnd_dir = UVR5_DIR / "gui_data" / "tkinterdnd2" / "tkdnd" / plat_dir
+    so_path = tkdnd_dir / so_name
+
+    if so_path.exists() and so_path.stat().st_size > 1000:
+        log(f"[CHECK] tkdnd .so OK em {so_path.relative_to(UVR5_DIR.parent.parent)}")
+        return
+
+    # .so ausente — baixar do upstream UVR5
+    log(f"[CHECK] tkdnd .so AUSENTE: {so_path}")
+    log(f"[FIX] Baixando de https://github.com/Anjok07/ultimatevocalremovergui ...")
+
+    tkdnd_urls = {
+        "linux64": "https://raw.githubusercontent.com/Anjok07/ultimatevocalremovergui/main/gui_data/tkinterdnd2/tkdnd/linux64/libtkdnd2.9.2.so",
+        "osx64": "https://raw.githubusercontent.com/Anjok07/ultimatevocalremovergui/main/gui_data/tkinterdnd2/tkdnd/osx64/libtkdnd2.9.2.dylib",
+        "osx_arm": "https://raw.githubusercontent.com/Anjok07/ultimatevocalremovergui/main/gui_data/tkinterdnd2/tkdnd/osx_arm/libtkdnd2.9.3.dylib",
+        "win64": "https://raw.githubusercontent.com/Anjok07/ultimatevocalremovergui/main/gui_data/tkinterdnd2/tkdnd/win64/libtkdnd2.9.2.dll",
+    }
+    url = tkdnd_urls.get(plat_dir)
+    if not url:
+        log(f"[AVISO] Sem URL para tkdnd em {plat_dir}")
+        return
+
+    tkdnd_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        import urllib.request
+        urllib.request.urlretrieve(url, so_path)
+        if so_path.exists() and so_path.stat().st_size > 1000:
+            log(f"[FIX] tkdnd .so baixado: {so_path}")
+        else:
+            log(f"[AVISO] Download falhou. A GUI pode nao abrir.")
+    except Exception as e:
+        log(f"[AVISO] Erro no download: {e}")
+        log(f"        Baixe manualmente de: {url}")
+        log(f"        E salve em: {so_path}")
+
+
 def venv_python() -> Path:
     """Retorna o path do python dentro do venv."""
     if platform.system() == "Windows":
@@ -288,6 +346,9 @@ def main() -> int:
     # Garantir audio-separator
     log("[INFO] Garantindo audio-separator instalado ...")
     pip_install(venv_py, ["audio-separator[cpu]"])
+
+    # Validar tkdnd .so (binário nativo do Tk drag-and-drop)
+    check_tkdnd_binary()
 
     # ffmpeg
     if not shutil.which("ffmpeg"):

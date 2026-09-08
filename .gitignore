@@ -23,6 +23,9 @@ __pycache__/
 # C extensions
 *.so
 
+# UVR5 tkdnd .so files MUST be tracked (forks não-buildam nativamente)
+!guis/uvr5/gui_data/tkinterdnd2/tkdnd/**/*.so
+
 # Distribution / packaging
 .Python
 build/
