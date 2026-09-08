@@ -70,6 +70,37 @@ The simplest (and probably most used) use case for this package is to separate a
 - Ability to inference using a pre-trained model in PTH or ONNX format.
 - CLI support for easy use in scripts and batch processing.
 - Python API for integration into other projects.
+- **🎨 GUI integrada (UVR5)** — `python3 guis/run_gui.py` (Tkinter, vendorizado)
+
+## 🎨 GUI UVR5 (integrada)
+
+Este fork inclui a **GUI oficial do UVR5** (Ultimate Vocal Remover 5) já
+**vendorizada** em `guis/uvr5/`, mais **launchers** que detectam SO + GPU
+automaticamente. Para usar:
+
+```bash
+# Cross-platform (recomendado)
+python3 guis/run_gui.py
+
+# Linux / macOS
+./guis/run-gui.sh
+
+# Windows
+guis\run-gui.bat
+```
+
+O script:
+1. Detecta Python 3.10+ e GPU NVIDIA
+2. Cria venv isolado em `.venv-uvr5/`
+3. Instala torch com CUDA 12.1 (GPU) ou CPU
+4. Instala deps do UVR5 + `audio-separator[cpu]`
+5. Inicia a GUI
+
+**Modelos recomendados** (baixar pelo Settings → Download Center da GUI):
+- **BS-Roformer-SW** (~400 MB) — 6 stems (vocals/bass/drums/guitar/piano/other)
+- **htdemucs_6s** (~2.5 GB) — 6 stems via Demucs
+
+Documentação completa da GUI: [`guis/README.md`](guis/README.md)
 
 ## Installation 🛠️
 
