@@ -59,6 +59,74 @@ def detect_gpu() -> bool:
         return False
 
 
+def check_system_tkinter() -> None:
+    """Verifica tkinter no Python do SISTEMA (não do venv).
+    Se faltar, tenta instalar via apt (com sudo).
+    """
+    system_python = shutil.which("python3") or shutil.which("python")
+    if not system_python:
+        return
+
+    result = subprocess.run(
+        [system_python, "-c", "import tkinter"],
+        capture_output=True, check=False,
+    )
+    if result.returncode == 0:
+        log("[CHECK] tkinter OK no Python do sistema")
+        return
+
+    # tkinter ausente — tentar instalar via apt
+    log("[CHECK] tkinter AUSENTE no sistema (Python não consegue importar)")
+    if platform.system() != "Linux":
+        log(f"[AVISO] Sistema {platform.system()} detectado. Instale python-tk manualmente.")
+        return
+
+    if not shutil.which("apt-get") and not shutil.which("apt"):
+        log("[AVISO] apt nao encontrado. Instale python3-tk manualmente.")
+        return
+
+    # Tentar instalar sem sudo primeiro (caso ja tenha permissao)
+    pkg_managers = []
+    if shutil.which("apt-get"):
+        pkg_managers.append("apt-get")
+    if shutil.which("apt"):
+        pkg_managers.append("apt")
+
+    cmd = None
+    for pm in pkg_managers:
+        # Detectar versao do python
+        py_ver = subprocess.run(
+            [system_python, "-c", "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"],
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        major, minor = py_ver.split(".")
+        candidate_pkgs = [
+            f"python3-tk",
+            f"python{major}.{minor}-tk",
+            "python3-dev",
+        ]
+        cmd = [pm, "install", "-y"] + candidate_pkgs
+        break
+
+    if not cmd:
+        log("[AVISO] Nao foi possivel construir comando de instalacao. Instale python3-tk manualmente.")
+        return
+
+    log(f"[FIX] Tentando instalar via {' '.join(cmd)} (vai pedir senha sudo) ...")
+    try:
+        subprocess.run(["sudo", "-n"] + cmd, check=False)
+        # Se sudo -n falhou (precisa de senha), tentar interativo
+        result = subprocess.run(cmd, check=False)
+        if result.returncode == 0:
+            log("[FIX] tkinter instalado com sucesso!")
+        else:
+            log(f"[AVISO] Falha ao instalar tkinter (rc={result.returncode}).")
+            log("        Rode manualmente:  sudo apt install -y python3-tk python3-dev")
+    except Exception as e:
+        log(f"[AVISO] Erro: {e}")
+        log("        Rode manualmente:  sudo apt install -y python3-tk python3-dev")
+
+
 def venv_python() -> Path:
     """Retorna o path do python dentro do venv."""
     if platform.system() == "Windows":
@@ -193,6 +261,9 @@ def main() -> int:
 
     venv_py = ensure_venv(python)
 
+    # Verificar tkinter no SISTEMA (antes de instalar deps)
+    check_system_tkinter()
+
     # Instalar torch (GPU ou CPU)
     if has_gpu:
         log("[INFO] Instalando torch com CUDA 12.1 ...")
@@ -229,6 +300,44 @@ def main() -> int:
     log("")
     log("[INFO] Iniciando UVR5 GUI ...")
     log("       (feche a janela para encerrar)")
+    log("")
+
+    # Validação pré-startup: tkinter e display
+    log("[CHECK] Validando tkinter e display ...")
+    precheck = subprocess.run(
+        [venv_py, "-c", "import tkinter; import os; print('DISPLAY' in os.environ or os.name == 'nt')"],
+        capture_output=True, text=True,
+    )
+    if precheck.returncode != 0:
+        log("")
+        log("╔══════════════════════════════════════════════════════════════╗")
+        log("║  ERRO: tkinter nao disponivel no Python do venv              ║")
+        log("╚══════════════════════════════════════════════════════════════╝")
+        log("")
+        log("Causa provavel: python3-tk nao instalado no sistema.")
+        log("O Python 3.12 do Ubuntu 24.04+ / Debian 12+ separa o tkinter")
+        log("em um pacote de sistema. Instale com:")
+        log("")
+        log("    sudo apt install -y python3-tk python3-dev")
+        log("")
+        log("Depois rode o launcher de novo.")
+        return 1
+
+    has_display = "True" in precheck.stdout
+    if not has_display:
+        log("")
+        log("╔══════════════════════════════════════════════════════════════╗")
+        log("║  ERRO: nenhuma sessao de display disponivel                  ║")
+        log("╚══════════════════════════════════════════════════════════════╝")
+        log("")
+        log("A GUI UVR5 precisa de um servidor grafico (X11/Wayland).")
+        log("Voce esta em:")
+        log("  - SSH sem X forwarding? Conecte com 'ssh -X user@host'")
+        log("  - Container/headless? Use o CLI: audio-separator (sem GUI)")
+        log("  - Wayland? Instale xwayland")
+        return 1
+
+    log("[CHECK] OK")
     log("")
     log("[DICA] Para usar o entry point 'audio-separator-gui' no PATH,")
     log("       rode:  pip install -e .  (na raiz do repo)")
