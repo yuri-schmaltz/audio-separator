@@ -1,0 +1,40 @@
+# Dependências da GUI UVR5, ajustadas para Python 3.10-3.12
+# Substitui o requirements.txt original do UVR5 (que tem pins de 2022 incompatíveis com 3.12)
+#
+# O audio-separator (CLI) já instala torch/onnxruntime/etc. separadamente,
+# então este arquivo foca só no que a GUI UVR5 precisa de adicional.
+
+# --- Áudio ---
+soundfile>=0.12        # leitura/escrita WAV/FLAC
+librosa>=0.10          # análise espectral (versão 0.9 do UVR5 quebra com numpy 2)
+audioread>=3.0.1       # fallback para formatos não suportados pelo soundfile
+                        # (>=3.0.1 corrige ModuleNotFoundError: 'imp' em Python 3.12)
+
+# --- Torch / ML (já vem do audio-separator, mas re-declaramos pra venv isolado) ---
+# torch: instalado pelo launcher com CUDA ou CPU
+# onnxruntime: instalado pelo launcher (cpu ou gpu)
+
+# --- Numerics ---
+numpy>=1.26,<3.0       # audio-separator pede >=2; alguns bindings ainda pedem <3
+scipy>=1.11            # audio-separator pede >=1.13,<2.0
+resampy>=0.4.2
+pyrubberband>=0.4       # pitch shifting
+soundstretch>=1.2
+samplerate>=0.1.0
+
+# --- Tkinter GUI ---
+Pillow>=10.0
+pyglet>=2.0
+psutil>=5.9
+natsort>=8.0
+pydub>=0.25
+omegaconf>=2.3
+ml_collections>=0.1.1
+einops>=0.7
+matchering>=2.0
+kthread>=0.2
+pyperclip>=1.8
+screeninfo>=0.8
+diffq>=0.2
+playsound>=1.3
+wget>=3.2

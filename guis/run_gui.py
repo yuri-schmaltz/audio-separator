@@ -21,7 +21,11 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 UVR5_DIR = SCRIPT_DIR / "uvr5"
 VENV_DIR = SCRIPT_DIR.parent / ".venv-uvr5"
 ENTRY = UVR5_DIR / "UVR.py"
-REQ_FILE = UVR5_DIR / "requirements.txt"
+# Preferir nosso requirements corrigido (compat Python 3.12)
+# Fallback para o requirements original do UVR5 se o nosso sumir
+REQ_FILE_LOCAL = SCRIPT_DIR / "requirements-gui.txt"
+REQ_FILE_UVR5 = UVR5_DIR / "requirements.txt"
+REQ_FILE = REQ_FILE_LOCAL if REQ_FILE_LOCAL.exists() else REQ_FILE_UVR5
 
 
 def log(msg: str) -> None:
@@ -148,6 +152,9 @@ def main() -> int:
     log("")
     log("[INFO] Iniciando UVR5 GUI ...")
     log("       (feche a janela para encerrar)")
+    log("")
+    log("[DICA] Para usar o entry point 'audio-separator-gui' no PATH,")
+    log("       rode:  pip install -e .  (na raiz do repo)")
     log("")
 
     os.chdir(str(UVR5_DIR))

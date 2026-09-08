@@ -59,8 +59,12 @@ else
     pip install --quiet torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 fi
 
-# Deps UVR5
-if [ -f "$UVR5_DIR/requirements.txt" ]; then
+# Deps UVR5 (preferir requirements-gui.txt com pins corrigidos para Python 3.12)
+if [ -f "$SCRIPT_DIR/requirements-gui.txt" ]; then
+    echo "📥 Instalando deps UVR5 (versão corrigida)..."
+    pip install --quiet -r "$SCRIPT_DIR/requirements-gui.txt"
+elif [ -f "$UVR5_DIR/requirements.txt" ]; then
+    echo "📥 Instalando deps UVR5 (requirements.txt original — pode falhar em Python 3.12)..."
     pip install --quiet -r "$UVR5_DIR/requirements.txt"
 fi
 
