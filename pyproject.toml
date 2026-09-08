@@ -93,6 +93,7 @@ torch = [
 [tool.poetry.scripts]
 audio-separator = 'audio_separator.utils.cli:main'
 audio-separator-remote = 'audio_separator.remote.cli:main'
+audio-separator-gui = 'guis.run_gui:main'
 
 [tool.poetry.group.dev.dependencies]
 black = ">=23"
